@@ -1,0 +1,49 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17-bookworm
+    environment:
+      POSTGRES_DB: linkmgr
+      POSTGRES_USER: linkmgr
+      POSTGRES_PASSWORD: linkmgr
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U linkmgr -d linkmgr"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: ghcr.io/pressly/goose:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://linkmgr:linkmgr@db:5432/linkmgr?sslmode=disable
+    volumes:
+      - ./migrations:/migrations:ro
+    command: ["goose", "-dir=/migrations", "up"]
+    restart: "no"
+
+  api:
+    image: golang:1.23
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://linkmgr:linkmgr@db:5432/linkmgr?sslmode=disable
+    command: sleep infinity
+    ports:
+      - "8080:8080"
+
+  web:
+    image: nginx:alpine
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+    ports:
+      - "5177:80"
+
+volumes:
+  pgdata:
