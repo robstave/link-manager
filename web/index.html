@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="login-page" class="hidden">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>Welcome Back</h1>
+                <p style="color: var(--text-muted); font-size: 0.875rem;">Enter your credentials to access your links
+                </p>
+            </div>
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary"
+                    style="width: 100%; justify-content: center; padding: 0.75rem;">Login</button>
+            </form>
+            <p id="login-error" style="color: #ef4444; font-size: 0.75rem; margin-top: 1rem; text-align: center;"
+                class="hidden"></p>
+        </div>
+    </div>
+
+    <div id="app" class="hidden">
+        <aside>
+            <div class="sidebar-header">
+                <span>🔗</span>
+                <span>Link Manager</span>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-title">Projects</div>
+                    <div id="project-list">
+                        <!-- Projects will be loaded here -->
+                    </div>
+                    <button class="nav-item" id="add-project-btn"
+                        style="width: 100%; background: none; border: 1px dashed var(--border); margin-top: 0.5rem; justify-content: center; opacity: 0.6;">
+                        <span>+ New Project</span>
+                    </button>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-title">Tags</div>
+                    <div id="tag-list" style="display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0 0.5rem;">
+                        <!-- Tags will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 1rem; border-top: 1px solid var(--border);">
+                <div class="nav-item" id="logout-btn">
+                    <span class="icon">🚪</span>
+                    <span>Logout</span>
+                </div>
+            </div>
+        </aside>
+
+        <main>
+            <header>
+                <div class="search-container">
+                    <span
+                        style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);">🔍</span>
+                    <input type="text" id="global-search" placeholder="Search across all links...">
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" id="add-link-btn">
+                        <span>+ Add Link</span>
+                    </button>
+                    <div id="user-info" style="display: flex; align-items: center; gap: 0.75rem;">
+                        <span id="display-username" style="font-weight: 600;">Admin</span>
+                        <div
+                            style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700;">
+                            A</div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div id="project-header" style="margin-bottom: 2rem;">
+                    <h2 id="current-project-name" style="font-size: 1.875rem; font-weight: 700;">Project Name</h2>
+                    <p id="current-project-desc" style="color: var(--text-muted);">Project description goes here...</p>
+                </div>
+
+                <div id="category-grid" class="category-grid">
+                    <!-- Categories and links will be loaded here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="add-link-modal" class="hidden"
+        style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div
+            style="background: var(--bg-card); border: 1px solid var(--border); width: 500px; padding: 2rem; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">Add New Link</h3>
+            <form id="add-link-form">
+                <div class="input-group">
+                    <label>URL</label>
+                    <input type="url" id="link-url" required placeholder="https://...">
+                </div>
+                <div class="input-group">
+                    <label>Title (Optional)</label>
+                    <input type="text" id="link-title" placeholder="Fetch automatically if empty">
+                </div>
+                <div class="input-group">
+                    <label>Stars (0-10)</label>
+                    <input type="number" id="link-stars" min="0" max="10" value="0">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn" id="close-modal-btn"
+                        style="background: rgba(255,255,255,0.05);">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Link</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="add-project-modal" class="hidden"
+        style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div
+            style="background: var(--bg-card); border: 1px solid var(--border); width: 500px; padding: 2rem; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">Add New Project</h3>
+            <form id="add-project-form">
+                <div class="input-group">
+                    <label>Project Name</label>
+                    <input type="text" id="project-name" required placeholder="My Awesome Project">
+                </div>
+                <div class="input-group">
+                    <label>Description (Optional)</label>
+                    <textarea id="project-description"
+                        style="width: 100%; height: 100px; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-main); font-family: inherit;"
+                        placeholder="What is this project about?"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn" id="close-project-modal-btn"
+                        style="background: rgba(255,255,255,0.05);">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
