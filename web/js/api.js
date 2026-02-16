@@ -73,6 +73,13 @@ class ApiClient {
         return this.request(`/projects/${projectId}/categories`);
     }
 
+    createCategory(projectId, name) {
+        return this.request(`/projects/${projectId}/categories`, {
+            method: 'POST',
+            body: JSON.stringify({ name }),
+        });
+    }
+
     // Links
     getLinks(params = {}) {
         const query = new URLSearchParams(params).toString();

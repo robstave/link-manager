@@ -20,6 +20,7 @@ type CreateLinkRequest struct {
 	URL         string   `json:"url"`
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
+	UserNotes   string   `json:"user_notes"`
 	ProjectID   *string  `json:"project_id"`
 	CategoryID  *string  `json:"category_id"`
 	Tags        []string `json:"tags"`
@@ -117,7 +118,7 @@ func (c *LinkController) Create(w http.ResponseWriter, r *http.Request) {
 	if req.CategoryID != nil {
 		categoryID = *req.CategoryID
 	}
-	link, err := c.service.Create(r.Context(), claims.UserID, services.CreateLinkInput{URL: req.URL, Title: req.Title, Description: req.Description, ProjectID: projectID, CategoryID: categoryID, Tags: req.Tags, Stars: req.Stars})
+	link, err := c.service.Create(r.Context(), claims.UserID, services.CreateLinkInput{URL: req.URL, Title: req.Title, Description: req.Description, UserNotes: req.UserNotes, ProjectID: projectID, CategoryID: categoryID, Tags: req.Tags, Stars: req.Stars})
 	if err != nil {
 		http.Error(w, "failed to create link: "+err.Error(), http.StatusInternalServerError)
 		return

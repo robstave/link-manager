@@ -34,7 +34,7 @@ func (s *LinkService) Create(ctx context.Context, ownerID string, req CreateLink
 		}
 		categoryID = id
 	}
-	return s.repo.Create(ctx, ownerID, projectID, categoryID, req.URL, req.Title, req.Description, req.Stars, req.Tags)
+	return s.repo.Create(ctx, ownerID, projectID, categoryID, req.URL, req.Title, req.Description, req.UserNotes, req.Stars, req.Tags)
 }
 
 func (s *LinkService) Get(ctx context.Context, linkID, ownerID string) (repositories.LinkWithMeta, error) {
@@ -61,8 +61,8 @@ func IsNotFound(err error) bool {
 }
 
 type CreateLinkInput struct {
-	URL, Title, Description string
-	ProjectID, CategoryID   string
-	Tags                    []string
-	Stars                   int
+	URL, Title, Description, UserNotes string
+	ProjectID, CategoryID              string
+	Tags                               []string
+	Stars                              int
 }

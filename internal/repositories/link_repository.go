@@ -136,15 +136,15 @@ func (r *LinkRepository) DefaultCategoryID(ctx context.Context, projectID string
 	return id, err
 }
 
-func (r *LinkRepository) Create(ctx context.Context, ownerID, projectID, categoryID, url, title, description string, stars int, tags []string) (models.Link, error) {
+func (r *LinkRepository) Create(ctx context.Context, ownerID, projectID, categoryID, url, title, description, userNotes string, stars int, tags []string) (models.Link, error) {
 	var link models.Link
 	err := r.pool.QueryRow(ctx, `
-		INSERT INTO links (owner_id, project_id, category_id, url, title, description, stars)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO links (owner_id, project_id, category_id, url, title, description, user_notes, stars)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, owner_id, project_id, category_id, url, title, description, icon_url,
 			user_notes, generated_notes, generated_notes_size, stars, click_count, 
 			last_clicked_at, cart, created_at, updated_at
-	`, ownerID, projectID, categoryID, url, title, description, stars).Scan(
+	`, ownerID, projectID, categoryID, url, title, description, userNotes, stars).Scan(
 		&link.ID, &link.OwnerID, &link.ProjectID, &link.CategoryID, &link.URL,
 		&link.Title, &link.Description, &link.IconURL, &link.UserNotes,
 		&link.GeneratedNotes, &link.GeneratedNotesSize, &link.Stars,
