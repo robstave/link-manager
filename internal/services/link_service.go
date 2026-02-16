@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/robstave/link-manager/internal/models"
@@ -34,7 +35,7 @@ func (s *LinkService) Create(ctx context.Context, ownerID string, req CreateLink
 		}
 		categoryID = id
 	}
-	return s.repo.Create(ctx, ownerID, projectID, categoryID, req.URL, req.Title, req.Description, req.UserNotes, req.Stars, req.Tags)
+	return s.repo.Create(ctx, ownerID, projectID, categoryID, normalizeURL(req.URL), req.Title, req.Description, req.UserNotes, req.Stars, req.Tags)
 }
 
 func (s *LinkService) Get(ctx context.Context, linkID, ownerID string) (repositories.LinkWithMeta, error) {
@@ -65,4 +66,15 @@ type CreateLinkInput struct {
 	ProjectID, CategoryID              string
 	Tags                               []string
 	Stars                              int
+}
+
+func normalizeURL(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return value
+	}
+	if strings.Contains(value, "://") {
+		return value
+	}
+	return "https://" + value
 }

@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderProjectSidebar();
 
         if (projects.length > 0 && !currentProjectId) {
-            selectProject(projects[0].id);
+            await selectProject(projects[0].id);
         }
     }
 
@@ -235,12 +235,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closeCategoryModalBtn = document.getElementById('close-category-modal-btn');
     const addCategoryForm = document.getElementById('add-category-form');
 
-    addCategoryBtn.onclick = () => addCategoryModal.classList.remove('hidden');
+    addCategoryBtn.onclick = () => {
+        if (!currentProjectId) {
+            alert('Please select a project first.');
+            return;
+        }
+        addCategoryModal.classList.remove('hidden');
+    };
     closeCategoryModalBtn.onclick = () => addCategoryModal.classList.add('hidden');
 
     addCategoryForm.onsubmit = async (e) => {
         e.preventDefault();
         const name = document.getElementById('category-name').value.trim();
+
+        if (!currentProjectId) {
+            alert('No active project selected.');
+            return;
+        }
+
+        if (!name) {
+            alert('Category name is required.');
+            return;
+        }
 
         try {
             await api.createCategory(currentProjectId, name);
@@ -298,9 +314,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         refreshCategoryOptions(inputValue);
     });
 
+    function normalizeUrl(rawUrl) {
+        const value = (rawUrl || '').trim();
+        if (!value) return '';
+        if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(value)) {
+            return value;
+        }
+        return `https://${value}`;
+    }
+
     addLinkForm.onsubmit = async (e) => {
         e.preventDefault();
-        const url = document.getElementById('link-url').value;
+        const url = normalizeUrl(document.getElementById('link-url').value);
         const title = document.getElementById('link-title').value;
         const description = document.getElementById('link-description').value;
         const userNotes = document.getElementById('link-user-notes').value;
