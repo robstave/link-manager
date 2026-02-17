@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import LinkItem from './LinkItem';
 import AddLinkModal from './modals/AddLinkModal';
 
-export default function CategoryCard({ category, projectId, onLinkCreated }) {
+export default function CategoryCard({ category, projectId, onLinkCreated, refreshTimestamp }) {
     const [links, setLinks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddLink, setShowAddLink] = useState(false);
@@ -24,7 +24,7 @@ export default function CategoryCard({ category, projectId, onLinkCreated }) {
             setLoading(false);
         }
         fetchLinks();
-    }, [category.id]);
+    }, [category.id, refreshTimestamp]);
 
     return (
         <>

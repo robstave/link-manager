@@ -14,6 +14,7 @@ export default function AppLayout() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState(null);
     const [categories, setCategories] = useState([]);
+    const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
 
     const loadProjects = useCallback(async () => {
         const data = await api.getProjects();
@@ -58,15 +59,19 @@ export default function AppLayout() {
         if (projs.length > 0) {
             setCurrentProjectId(projs[projs.length - 1].id);
         }
+        setRefreshTimestamp(Date.now());
     }
 
     async function handleCategoryCreated() {
         await loadCategories(currentProjectId);
+        setRefreshTimestamp(Date.now());
     }
 
     async function handleLinkCreated() {
         await loadCategories(currentProjectId);
         await loadProjects(); // update link counts
+        await loadTags(); // update tag counts
+        setRefreshTimestamp(Date.now());
     }
 
     function handleSearch(query) {
@@ -100,6 +105,7 @@ export default function AppLayout() {
                 tags={tags}
                 onProjectCreated={handleProjectCreated}
                 onLogout={logout}
+                refreshTimestamp={refreshTimestamp}
             />
             <main>
                 <Header
@@ -111,10 +117,11 @@ export default function AppLayout() {
                     categories={categories}
                     onCategoryCreated={handleCategoryCreated}
                     onLinkCreated={handleLinkCreated}
+                    refreshTimestamp={refreshTimestamp}
                 />
                 <div className="content-area">
                     {searchResults ? (
-                        <SearchResults links={searchResults} />
+                        <SearchResults links={searchResults} refreshTimestamp={refreshTimestamp} />
                     ) : (
                         <>
                             {currentProject && (
@@ -127,6 +134,7 @@ export default function AppLayout() {
                                 categories={categories}
                                 currentProjectId={currentProjectId}
                                 onLinkCreated={handleLinkCreated}
+                                refreshTimestamp={refreshTimestamp}
                             />
                         </>
                     )}

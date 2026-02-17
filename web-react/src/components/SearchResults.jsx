@@ -1,6 +1,6 @@
 import LinkItem from './LinkItem';
 
-export default function SearchResults({ links }) {
+export default function SearchResults({ links, refreshTimestamp }) {
     return (
         <div className="search-results">
             <div className="project-header">
