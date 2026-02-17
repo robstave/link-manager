@@ -37,6 +37,7 @@ func main() {
 	categoryController := controllers.NewCategoryController(services.NewCategoryService(repositories.NewCategoryRepository(database.Pool)))
 	linkController := controllers.NewLinkController(services.NewLinkService(repositories.NewLinkRepository(database.Pool)))
 	tagController := controllers.NewTagController(services.NewTagService(repositories.NewTagRepository(database.Pool)))
+	metadataController := controllers.NewMetadataController(services.NewMetadataService())
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -62,6 +63,7 @@ func main() {
 	protected.HandleFunc("PATCH /api/v1/links/{id}/cart", linkController.ToggleCart)
 	protected.HandleFunc("GET /api/v1/export/links.json", linkController.Export)
 	protected.HandleFunc("GET /api/v1/tags", tagController.List)
+	protected.HandleFunc("GET /api/v1/meta/title", metadataController.FetchTitle)
 
 	mux.Handle("/api/v1/", middleware.AuthMiddleware(protected))
 	handler := middleware.CORS(mux)

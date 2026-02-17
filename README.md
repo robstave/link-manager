@@ -10,17 +10,25 @@ Ensure you have **Docker** and **Docker Compose** installed.
 ### 2. Launch the Application
 Run the following command in the root directory:
 ```bash
-docker compose up --build -d
+./scripts/guard-up.sh
 ```
 The system will automatically:
 1. Initialize the PostgreSQL database with `pgvector`.
 2. Run database migrations.
 3. Seed the admin user and sample data.
-4. Launch the Web UI and API.
+4. Launch the React Web UI and API.
+
+`guard-up.sh` will fail fast if a legacy UI container (`web` / `web-legacy`) is running.
 
 ### 3. Access
 - **Web UI**: [http://localhost:5177](http://localhost:5177)
 - **API Health**: [http://localhost:5177/api/v1/healthz](http://localhost:5177/api/v1/healthz)
+
+Legacy pre-React UI is disabled by default. To run it explicitly:
+```bash
+docker compose --profile legacy-ui up -d web-legacy
+```
+Legacy UI URL: [http://localhost:5178](http://localhost:5178)
 
 **Default Credentials:**
 - **Username**: `admin`
@@ -32,7 +40,8 @@ The system will automatically:
 
 | Action | Command |
 | :--- | :--- |
-| **Start Services** | `docker compose up -d` |
+| **Start Services (Guarded)** | `./scripts/guard-up.sh` |
+| **Start Specific Services (Guarded)** | `./scripts/guard-up.sh api web-react` |
 | **Stop Services** | `docker compose down` |
 | **Rebuild & Start** | `docker compose up --build -d` |
 | **View Logs** | `docker compose logs -f` |

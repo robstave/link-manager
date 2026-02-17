@@ -19,6 +19,28 @@ export default function AddLinkModal({ projectId, categories, initialCategoryId,
     const [userNotes, setUserNotes] = useState('');
     const [stars, setStars] = useState(0);
     const [error, setError] = useState('');
+    const [loadingTitle, setLoadingTitle] = useState(false);
+
+    async function handleUrlBlur() {
+        // Only fetch if URL is valid and title is empty
+        if (!url.trim() || title.trim()) return;
+
+        const normalizedUrl = normalizeUrl(url);
+        if (!normalizedUrl) return;
+
+        setLoadingTitle(true);
+        try {
+            const result = await api.fetchTitle(normalizedUrl);
+            if (result && result.title && !title.trim()) {
+                setTitle(result.title);
+            }
+        } catch (err) {
+            console.error('Failed to fetch title:', err);
+            // Silent failure - user can still enter title manually
+        } finally {
+            setLoadingTitle(false);
+        }
+    }
 
     function handleCategoryInput(e) {
         const value = e.target.value;
@@ -61,6 +83,7 @@ export default function AddLinkModal({ projectId, categories, initialCategoryId,
                             type="text"
                             value={url}
                             onChange={(e) => setUrl(e.target.value)}
+                            onBlur={handleUrlBlur}
                             required
                             placeholder="www.example.com or https://example.com"
                             autoFocus
@@ -72,7 +95,8 @@ export default function AddLinkModal({ projectId, categories, initialCategoryId,
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Fetch automatically if empty"
+                            placeholder={loadingTitle ? "Fetching title..." : "Leave empty to auto-fetch"}
+                            disabled={loadingTitle}
                         />
                     </div>
                     <div className="input-group">

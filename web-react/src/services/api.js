@@ -109,6 +109,10 @@ class ApiClient {
         return this.request('/tags');
     }
 
+    async fetchTitle(url) {
+        return this.request(`/meta/title?url=${encodeURIComponent(url)}`);
+    }
+
     getMe() {
         return this.request('/auth/me');
     }

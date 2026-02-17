@@ -170,6 +170,13 @@ header {
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 0;
+  overflow: visible;
+}
+
+.category-card:hover {
+  z-index: 20;
 }
 
 .category-header {
@@ -191,6 +198,7 @@ header {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  overflow: visible;
 }
 
 .link-item {
@@ -203,6 +211,7 @@ header {
   transition: all 0.2s;
   cursor: pointer;
   position: relative;
+  z-index: 0;
   text-decoration: none;
   color: inherit;
 }
@@ -211,6 +220,7 @@ header {
   background-color: rgba(255, 255, 255, 0.06);
   border-color: var(--border);
   transform: translateY(-1px);
+  z-index: 60;
 }
 
 .link-favicon {
