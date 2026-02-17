@@ -76,6 +76,9 @@
                     <input type="text" id="global-search" placeholder="Search across all links...">
                 </div>
                 <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" id="add-category-btn">
+                        <span>+ Add Category</span>
+                    </button>
                     <button class="btn btn-primary" id="add-link-btn">
                         <span>+ Add Link</span>
                     </button>
@@ -110,11 +113,24 @@
             <form id="add-link-form">
                 <div class="input-group">
                     <label>URL</label>
-                    <input type="url" id="link-url" required placeholder="https://...">
+                    <input type="text" id="link-url" required placeholder="www.example.com or https://example.com">
                 </div>
                 <div class="input-group">
                     <label>Title (Optional)</label>
                     <input type="text" id="link-title" placeholder="Fetch automatically if empty">
+                </div>
+                <div class="input-group" style="position: relative;">
+                    <label>Category</label>
+                    <input type="text" id="link-category" list="category-options" placeholder="Type to filter categories" autocomplete="off">
+                    <datalist id="category-options"></datalist>
+                </div>
+                <div class="input-group">
+                    <label>Description (Optional)</label>
+                    <textarea id="link-description" placeholder="Describe why this link matters"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>User Notes (Optional)</label>
+                    <textarea id="link-user-notes" placeholder="Personal notes for this link"></textarea>
                 </div>
                 <div class="input-group">
                     <label>Stars (0-10)</label>
@@ -149,6 +165,25 @@
                     <button type="button" class="btn" id="close-project-modal-btn"
                         style="background: rgba(255,255,255,0.05);">Cancel</button>
                     <button type="submit" class="btn btn-primary">Create Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="add-category-modal" class="hidden"
+        style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div
+            style="background: var(--bg-card); border: 1px solid var(--border); width: 500px; padding: 2rem; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">Add New Category</h3>
+            <form id="add-category-form">
+                <div class="input-group">
+                    <label>Category Name</label>
+                    <input type="text" id="category-name" required placeholder="Backend, Docs, Design...">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn" id="close-category-modal-btn"
+                        style="background: rgba(255,255,255,0.05);">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Category</button>
                 </div>
             </form>
         </div>

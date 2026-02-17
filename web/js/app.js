@@ -9,6 +9,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentProjectId = null;
     let categories = [];
 
+    async function createCategoryForProject(projectId, name) {
+        if (typeof api.createCategory === 'function') {
+            return api.createCategory(projectId, name);
+        }
+
+        console.warn('api.createCategory() is missing; using request() fallback');
+        return api.request(`/projects/${projectId}/categories`, {
+            method: 'POST',
+            body: JSON.stringify({ name }),
+        });
+    }
+
     // Initial Auth Check
     if (api.isAuthenticated()) {
         showApp();
@@ -62,7 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderProjectSidebar();
 
         if (projects.length > 0 && !currentProjectId) {
-            selectProject(projects[0].id);
+            await selectProject(projects[0].id);
         }
     }
 
@@ -99,9 +111,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         grid.innerHTML = '<div style="padding: 2rem; color: var(--text-muted);">Loading links...</div>';
 
         const projectCategories = await api.getCategories(projectId);
+        categories = projectCategories || [];
         grid.innerHTML = '';
 
-        for (const cat of (projectCategories || [])) {
+        for (const cat of categories) {
             const card = await renderCategoryCard(cat);
             grid.appendChild(card);
         }
@@ -127,13 +140,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span>${category.is_default ? '📦' : '📁'}</span>
                     <span>${category.name}</span>
                 </div>
-                <span style="font-size: 0.875rem; color: var(--text-muted);">${category.link_count}</span>
+                <div class="category-actions">
+                    <button class="btn category-add-link" data-category-id="${category.id}" data-category-name="${category.name}">+ Add Link</button>
+                    <span style="font-size: 0.875rem; color: var(--text-muted);">${category.link_count}</span>
+                </div>
             </div>
             <div class="link-list">
                 ${linksHtml}
             </div>
             ${category.link_count > 15 ? `<button class="btn" style="margin-top: 1rem; width: 100%; font-size: 0.75rem; justify-content: center; background: rgba(255,255,255,0.05);">View All ${category.link_count} Links</button>` : ''}
         `;
+
+        const categoryAddBtn = card.querySelector('.category-add-link');
+        if (categoryAddBtn) {
+            categoryAddBtn.onclick = () => openAddLinkModal({
+                categoryId: category.id,
+                categoryName: category.name,
+            });
+        }
 
         return card;
     }
@@ -217,30 +241,123 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    // Add Category Modal
+    const addCategoryBtn = document.getElementById('add-category-btn');
+    const addCategoryModal = document.getElementById('add-category-modal');
+    const closeCategoryModalBtn = document.getElementById('close-category-modal-btn');
+    const addCategoryForm = document.getElementById('add-category-form');
+
+    addCategoryBtn.onclick = () => {
+        if (!currentProjectId) {
+            alert('Please select a project first.');
+            return;
+        }
+        addCategoryModal.classList.remove('hidden');
+    };
+    closeCategoryModalBtn.onclick = () => addCategoryModal.classList.add('hidden');
+
+    addCategoryForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('category-name').value.trim();
+
+        if (!currentProjectId) {
+            alert('No active project selected.');
+            return;
+        }
+
+        if (!name) {
+            alert('Category name is required.');
+            return;
+        }
+
+        try {
+            await createCategoryForProject(currentProjectId, name);
+            addCategoryModal.classList.add('hidden');
+            addCategoryForm.reset();
+            await loadProjectContent(currentProjectId);
+        } catch (err) {
+            alert('Failed to create category: ' + err.message);
+        }
+    };
+
     // Add Link Modal
     const addLinkBtn = document.getElementById('add-link-btn');
     const modal = document.getElementById('add-link-modal');
     const closeModalBtn = document.getElementById('close-modal-btn');
     const addLinkForm = document.getElementById('add-link-form');
+    const linkCategoryInput = document.getElementById('link-category');
+    const categoryOptions = document.getElementById('category-options');
 
-    addLinkBtn.onclick = () => modal.classList.remove('hidden');
+    function refreshCategoryOptions(filterText = '') {
+        categoryOptions.innerHTML = '';
+        const filter = filterText.trim().toLowerCase();
+        (categories || [])
+            .filter(cat => !filter || cat.name.toLowerCase().includes(filter))
+            .forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.name;
+                option.dataset.categoryId = cat.id;
+                categoryOptions.appendChild(option);
+            });
+    }
+
+    function openAddLinkModal({ categoryId = null, categoryName = '' } = {}) {
+        refreshCategoryOptions();
+        linkCategoryInput.value = categoryName || '';
+        if (categoryId) {
+            linkCategoryInput.dataset.selectedCategoryId = categoryId;
+        } else {
+            delete linkCategoryInput.dataset.selectedCategoryId;
+        }
+        modal.classList.remove('hidden');
+    }
+
+    addLinkBtn.onclick = () => openAddLinkModal();
     closeModalBtn.onclick = () => modal.classList.add('hidden');
+
+    linkCategoryInput.addEventListener('input', (e) => {
+        const inputValue = e.target.value;
+        const matched = (categories || []).find(cat => cat.name === inputValue);
+        if (matched) {
+            linkCategoryInput.dataset.selectedCategoryId = matched.id;
+        } else {
+            delete linkCategoryInput.dataset.selectedCategoryId;
+        }
+        refreshCategoryOptions(inputValue);
+    });
+
+    function normalizeUrl(rawUrl) {
+        const value = (rawUrl || '').trim();
+        if (!value) return '';
+        if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(value)) {
+            return value;
+        }
+        return `https://${value}`;
+    }
 
     addLinkForm.onsubmit = async (e) => {
         e.preventDefault();
-        const url = document.getElementById('link-url').value;
+        const url = normalizeUrl(document.getElementById('link-url').value);
         const title = document.getElementById('link-title').value;
+        const description = document.getElementById('link-description').value;
+        const userNotes = document.getElementById('link-user-notes').value;
         const stars = parseInt(document.getElementById('link-stars').value);
+        const selectedCategory = (categories || []).find(cat => cat.name === linkCategoryInput.value.trim());
+        const categoryId = linkCategoryInput.dataset.selectedCategoryId || selectedCategory?.id || null;
 
         try {
             await api.createLink({
                 url,
                 title,
+                description,
+                user_notes: userNotes,
                 stars,
-                project_id: currentProjectId
+                project_id: currentProjectId,
+                category_id: categoryId
             });
             modal.classList.add('hidden');
             addLinkForm.reset();
+            delete linkCategoryInput.dataset.selectedCategoryId;
             await loadProjectContent(currentProjectId);
             await loadProjects(); // Update counts
         } catch (err) {
