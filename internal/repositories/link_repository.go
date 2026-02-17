@@ -211,6 +211,49 @@ func (r *LinkRepository) Click(ctx context.Context, linkID, ownerID string) (str
 	return url, err
 }
 
+func (r *LinkRepository) Update(ctx context.Context, ownerID, linkID string, projectID, categoryID, url, title, description, userNotes string, stars int, tags []string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `
+		UPDATE links 
+		SET project_id = $1, category_id = $2, url = $3, title = $4, description = $5, user_notes = $6, stars = $7, updated_at = NOW()
+		WHERE id = $8 AND owner_id = $9
+	`, projectID, categoryID, url, title, description, userNotes, stars, linkID, ownerID)
+	if err != nil {
+		return err
+	}
+
+	// Update tags: simplest way is to delete and re-insert
+	_, err = tx.Exec(ctx, `DELETE FROM link_tags WHERE link_id = $1`, linkID)
+	if err != nil {
+		return err
+	}
+
+	for _, tagName := range tags {
+		tagName = strings.TrimSpace(tagName)
+		if tagName == "" {
+			continue
+		}
+		var tagID string
+		err := tx.QueryRow(ctx, `
+			INSERT INTO tags (owner_id, name)
+			VALUES ($1, $2)
+			ON CONFLICT (owner_id, name) DO UPDATE SET name = EXCLUDED.name
+			RETURNING id
+		`, ownerID, tagName).Scan(&tagID)
+		if err != nil {
+			continue
+		}
+		_, _ = tx.Exec(ctx, `INSERT INTO link_tags (link_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, linkID, tagID)
+	}
+
+	return tx.Commit(ctx)
+}
+
 func (r *LinkRepository) UpdateStars(ctx context.Context, linkID, ownerID string, stars int) error {
 	_, err := r.pool.Exec(ctx, `UPDATE links SET stars = $1, updated_at = NOW() WHERE id = $2 AND owner_id = $3`, stars, linkID, ownerID)
 	return err

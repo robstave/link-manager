@@ -57,6 +57,7 @@ func main() {
 	protected.HandleFunc("GET /api/v1/links", linkController.List)
 	protected.HandleFunc("POST /api/v1/links", linkController.Create)
 	protected.HandleFunc("GET /api/v1/links/{id}", linkController.Get)
+	protected.HandleFunc("PUT /api/v1/links/{id}", linkController.Update)
 	protected.HandleFunc("DELETE /api/v1/links/{id}", linkController.Delete)
 	protected.HandleFunc("POST /api/v1/links/{id}/click", linkController.Click)
 	protected.HandleFunc("PATCH /api/v1/links/{id}/stars", linkController.UpdateStars)

@@ -29,8 +29,8 @@ class ApiClient {
             throw new Error(error || 'Request failed');
         }
 
-        if (resp.status === 204) return null;
-        return resp.json();
+        const text = await resp.text();
+        return text ? JSON.parse(text) : null;
     }
 
     async login(username, password) {
@@ -90,6 +90,19 @@ class ApiClient {
         return this.request('/links', {
             method: 'POST',
             body: JSON.stringify(linkData),
+        });
+    }
+
+    updateLink(linkId, linkData) {
+        return this.request(`/links/${linkId}`, {
+            method: 'PUT',
+            body: JSON.stringify(linkData),
+        });
+    }
+
+    deleteLink(linkId) {
+        return this.request(`/links/${linkId}`, {
+            method: 'DELETE',
         });
     }
 

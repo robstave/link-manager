@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import LinkItem from './LinkItem';
 import AddLinkModal from './modals/AddLinkModal';
 
-export default function CategoryCard({ category, projectId, onLinkCreated, refreshTimestamp }) {
+export default function CategoryCard({ category, projectId, onLinkCreated, onEdit, refreshTimestamp }) {
     const [links, setLinks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddLink, setShowAddLink] = useState(false);
@@ -48,7 +48,7 @@ export default function CategoryCard({ category, projectId, onLinkCreated, refre
                     {loading ? (
                         <div className="loading-text">Loading...</div>
                     ) : links.length > 0 ? (
-                        links.map((link) => <LinkItem key={link.id} link={link} />)
+                        links.map((link) => <LinkItem key={link.id} link={link} onEdit={onEdit} />)
                     ) : (
                         <div className="empty-text">No links found</div>
                     )}

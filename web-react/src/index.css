@@ -504,6 +504,30 @@ header {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  opacity: 0;
+}
+
+.btn-icon:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+.link-item:hover .btn-icon {
+  opacity: 1;
+}
+
 /* ===== Modal ===== */
 .modal-backdrop {
   position: fixed;
@@ -525,6 +549,18 @@ header {
   padding: 2rem;
   border-radius: 1rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
 }
 
 .modal-content h3 {

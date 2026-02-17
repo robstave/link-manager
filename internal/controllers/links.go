@@ -143,6 +143,43 @@ func (c *LinkController) Get(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(toResponse(item))
 }
 
+func (c *LinkController) Update(w http.ResponseWriter, r *http.Request) {
+	claims, _ := middleware.GetUserClaims(r.Context())
+	var req CreateLinkRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if req.URL == "" {
+		http.Error(w, "url is required", http.StatusBadRequest)
+		return
+	}
+
+	projectID, categoryID := "", ""
+	if req.ProjectID != nil {
+		projectID = *req.ProjectID
+	}
+	if req.CategoryID != nil {
+		categoryID = *req.CategoryID
+	}
+
+	err := c.service.Update(r.Context(), claims.UserID, r.PathValue("id"), services.CreateLinkInput{
+		URL:         req.URL,
+		Title:       req.Title,
+		Description: req.Description,
+		UserNotes:   req.UserNotes,
+		ProjectID:   projectID,
+		CategoryID:  categoryID,
+		Tags:        req.Tags,
+		Stars:       req.Stars,
+	})
+	if err != nil {
+		http.Error(w, "failed to update link: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (c *LinkController) Click(w http.ResponseWriter, r *http.Request) {
 	claims, _ := middleware.GetUserClaims(r.Context())
 	url, err := c.service.Click(r.Context(), r.PathValue("id"), claims.UserID)
@@ -175,7 +212,7 @@ func (c *LinkController) UpdateStars(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to update stars", http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (c *LinkController) ToggleCart(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +228,7 @@ func (c *LinkController) ToggleCart(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to update cart", http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (c *LinkController) Delete(w http.ResponseWriter, r *http.Request) {

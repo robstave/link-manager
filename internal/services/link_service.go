@@ -44,6 +44,27 @@ func (s *LinkService) Get(ctx context.Context, linkID, ownerID string) (reposito
 func (s *LinkService) Click(ctx context.Context, linkID, ownerID string) (string, error) {
 	return s.repo.Click(ctx, linkID, ownerID)
 }
+
+func (s *LinkService) Update(ctx context.Context, ownerID, linkID string, req CreateLinkInput) error {
+	projectID := req.ProjectID
+	categoryID := req.CategoryID
+	if projectID == "" {
+		id, err := s.repo.DefaultProjectID(ctx, ownerID)
+		if err != nil {
+			return err
+		}
+		projectID = id
+	}
+	if categoryID == "" {
+		id, err := s.repo.DefaultCategoryID(ctx, projectID)
+		if err != nil {
+			return err
+		}
+		categoryID = id
+	}
+	return s.repo.Update(ctx, ownerID, linkID, projectID, categoryID, normalizeURL(req.URL), req.Title, req.Description, req.UserNotes, req.Stars, req.Tags)
+}
+
 func (s *LinkService) UpdateStars(ctx context.Context, linkID, ownerID string, stars int) error {
 	return s.repo.UpdateStars(ctx, linkID, ownerID, stars)
 }

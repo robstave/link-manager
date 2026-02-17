@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import CategoryGrid from '../components/CategoryGrid';
 import SearchResults from '../components/SearchResults';
+import EditLinkModal from '../components/modals/EditLinkModal';
 
 export default function AppLayout() {
     const { user, logout } = useAuth();
@@ -15,6 +16,7 @@ export default function AppLayout() {
     const [searchResults, setSearchResults] = useState(null);
     const [categories, setCategories] = useState([]);
     const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
+    const [editingLink, setEditingLink] = useState(null);
 
     const loadProjects = useCallback(async () => {
         const data = await api.getProjects();
@@ -74,6 +76,18 @@ export default function AppLayout() {
         setRefreshTimestamp(Date.now());
     }
 
+    async function handleLinkUpdated() {
+        setEditingLink(null);
+        await loadCategories(currentProjectId);
+        await loadProjects();
+        await loadTags();
+        setRefreshTimestamp(Date.now());
+        // If we're in search mode, refresh search results too
+        if (searchQuery) {
+            handleSearchExecute(searchQuery);
+        }
+    }
+
     function handleSearch(query) {
         setSearchQuery(query);
         if (!query || query.length < 3) {
@@ -121,7 +135,11 @@ export default function AppLayout() {
                 />
                 <div className="content-area">
                     {searchResults ? (
-                        <SearchResults links={searchResults} refreshTimestamp={refreshTimestamp} />
+                        <SearchResults
+                            links={searchResults}
+                            onEdit={setEditingLink}
+                            refreshTimestamp={refreshTimestamp}
+                        />
                     ) : (
                         <>
                             {currentProject && (
@@ -134,12 +152,22 @@ export default function AppLayout() {
                                 categories={categories}
                                 currentProjectId={currentProjectId}
                                 onLinkCreated={handleLinkCreated}
+                                onEdit={setEditingLink}
                                 refreshTimestamp={refreshTimestamp}
                             />
                         </>
                     )}
                 </div>
             </main>
+            {editingLink && (
+                <EditLinkModal
+                    link={editingLink}
+                    projects={projects}
+                    categories={categories}
+                    onClose={() => setEditingLink(null)}
+                    onUpdated={handleLinkUpdated}
+                />
+            )}
         </div>
     );
 }

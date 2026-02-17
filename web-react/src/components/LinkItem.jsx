@@ -1,10 +1,19 @@
 import { api } from '../services/api';
 
-export default function LinkItem({ link }) {
-    function handleClick() {
+export default function LinkItem({ link, onEdit }) {
+    function handleClick(e) {
+        // Only record click if we're not clicking the edit button
+        if (e.target.closest('.link-edit-btn')) return;
+
         api.recordClick(link.id).catch((err) =>
             console.error('Click tracking failed:', err)
         );
+    }
+
+    function handleEditClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (onEdit) onEdit(link);
     }
 
     const starHtml = link.stars > 0 ? (
@@ -36,6 +45,13 @@ export default function LinkItem({ link }) {
                     )}
                 </div>
             </div>
+            <button
+                className="btn-icon link-edit-btn"
+                onClick={handleEditClick}
+                title="Edit Link"
+            >
+                ✏️
+            </button>
             <div className="link-hover-info">
                 <div className="hover-title">{link.title || link.url}</div>
                 <div className="hover-url">{link.url}</div>

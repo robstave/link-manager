@@ -1,6 +1,6 @@
 import LinkItem from './LinkItem';
 
-export default function SearchResults({ links, refreshTimestamp }) {
+export default function SearchResults({ links, onEdit, refreshTimestamp }) {
     return (
         <div className="search-results">
             <div className="project-header">
@@ -10,7 +10,7 @@ export default function SearchResults({ links, refreshTimestamp }) {
             <div className="category-card search-results-card">
                 <div className="link-list">
                     {links.length > 0 ? (
-                        links.map((link) => <LinkItem key={link.id} link={link} />)
+                        links.map((link) => <LinkItem key={link.id} link={link} onEdit={onEdit} />)
                     ) : (
                         <div className="empty-text">No matches found</div>
                     )}
