@@ -51,7 +51,7 @@ func (s *MetadataService) FetchPageMeta(rawURL string) (PageMeta, error) {
 	slog.Info("meta: received response", "url", rawURL, "status", resp.StatusCode)
 
 	// 100KB — enough to capture <head> on even verbose sites
-	limitedReader := io.LimitReader(resp.Body, 100*1024)
+	limitedReader := io.LimitReader(resp.Body, 250*1024)
 	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		slog.Error("meta: failed to read response body", "url", rawURL, "error", err)
@@ -62,7 +62,7 @@ func (s *MetadataService) FetchPageMeta(rawURL string) (PageMeta, error) {
 
 	html := string(body)
 	meta := PageMeta{
-		Title:   extractTitle(html),
+		Title:   extractTitle(html, rawURL),
 		IconURL: extractIcon(html, rawURL),
 	}
 
@@ -83,29 +83,104 @@ func (s *MetadataService) FetchTitle(rawURL string) (string, error) {
 }
 
 // extractTitle tries og:title first (usually cleaner), then falls back to <title>
-func extractTitle(html string) string {
+// For YouTube, it prioritises the <title> tag.
+func extractTitle(html string, rawURL string) string {
+
+	slog.Info("meta: extracting title----", "url", rawURL)
+
+	// Log a small snippet of the body to help debug
+	snippetLen := 500
+	if len(html) < snippetLen {
+		snippetLen = len(html)
+	}
+	slog.Info("meta: body snippet", "snippet", html[:snippetLen])
+
+	// YouTube-specific priority: use standard <title> tag first
+	isYouTube := strings.Contains(strings.ToLower(rawURL), "youtube.com") || strings.Contains(strings.ToLower(rawURL), "youtu.be")
+	if isYouTube {
+		slog.Info("meta: isYoutube", "url", rawURL)
+		// Use (?is) so that . matches newlines
+		titleRegex := regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
+
+		matches := titleRegex.FindStringSubmatch(html)
+		slog.Info("meta: youtube search result", "count", len(matches), "url", rawURL)
+		if len(matches) > 0 {
+			slog.Info("meta: youtube matches", "matches", matches)
+		}
+		if len(matches) >= 2 {
+			slog.Info("meta: youtube success", "url", rawURL)
+			return cleanText(matches[1])
+		}
+
+		// Also check twitter:title for YouTube specifically
+		twitterRegex := regexp.MustCompile(`(?i)<meta[^>]+name\s*=\s*["']twitter:title["'][^>]+content\s*=\s*["']([^"']+)["']`)
+		if twitterMatches := twitterRegex.FindStringSubmatch(html); len(twitterMatches) >= 2 {
+			slog.Info("meta: youtube twitter:title success", "url", rawURL)
+			return cleanText(twitterMatches[1])
+		}
+
+		slog.Info("meta: isYoutube failed xxx", "url", rawURL)
+	}
+
 	// og:title — content before property
 	ogRegex := regexp.MustCompile(`(?i)<meta[^>]+property\s*=\s*["']og:title["'][^>]+content\s*=\s*["']([^"']+)["']`)
-	if matches := ogRegex.FindStringSubmatch(html); len(matches) >= 2 {
+	matches := ogRegex.FindStringSubmatch(html)
+	slog.Info("meta: ogRegex search result", "count", len(matches), "url", rawURL)
+	if len(matches) > 0 {
+		slog.Info("meta: ogRegex matches", "matches", matches)
+	}
+	if len(matches) >= 2 {
+		slog.Info("meta: og:title success", "url", rawURL)
 		return cleanText(matches[1])
 	}
 
 	// og:title — content after property (attribute order varies)
 	ogRegex2 := regexp.MustCompile(`(?i)<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+property\s*=\s*["']og:title["']`)
-	if matches := ogRegex2.FindStringSubmatch(html); len(matches) >= 2 {
-		return cleanText(matches[1])
+	matches2 := ogRegex2.FindStringSubmatch(html)
+	slog.Info("meta: ogRegex2 search result", "count", len(matches2), "url", rawURL)
+	if len(matches2) > 0 {
+		slog.Info("meta: ogRegex2 matches", "matches", matches2)
+	}
+	if len(matches2) >= 2 {
+		slog.Info("meta: og:title (variant) success", "url", rawURL)
+		return cleanText(matches2[1])
 	}
 
 	// twitter:title — similar to og:title, often present on news/social sites
 	twitterRegex := regexp.MustCompile(`(?i)<meta[^>]+name\s*=\s*["']twitter:title["'][^>]+content\s*=\s*["']([^"']+)["']`)
-	if matches := twitterRegex.FindStringSubmatch(html); len(matches) >= 2 {
-		return cleanText(matches[1])
+	matchesTwitter := twitterRegex.FindStringSubmatch(html)
+	slog.Info("meta: twitterRegex search result", "count", len(matchesTwitter), "url", rawURL)
+	if len(matchesTwitter) > 0 {
+		slog.Info("meta: twitterRegex matches", "matches", matchesTwitter)
+	}
+	if len(matchesTwitter) >= 2 {
+		slog.Info("meta: twitter:title success", "url", rawURL)
+		return cleanText(matchesTwitter[1])
+	}
+
+	// twitter:title — content after name (variant)
+	twitterRegex2 := regexp.MustCompile(`(?i)<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+name\s*=\s*["']twitter:title["']`)
+	matchesTwitter2 := twitterRegex2.FindStringSubmatch(html)
+	slog.Info("meta: twitterRegex2 search result", "count", len(matchesTwitter2), "url", rawURL)
+	if len(matchesTwitter2) > 0 {
+		slog.Info("meta: twitterRegex2 matches", "matches", matchesTwitter2)
+	}
+	if len(matchesTwitter2) >= 2 {
+		slog.Info("meta: twitter:title (variant) success", "url", rawURL)
+		return cleanText(matchesTwitter2[1])
 	}
 
 	// Standard <title> tag as final fallback
-	titleRegex := regexp.MustCompile(`(?i)<title[^>]*>(.*?)</title>`)
-	if matches := titleRegex.FindStringSubmatch(html); len(matches) >= 2 {
-		return cleanText(matches[1])
+	// Use (?is) so that . matches newlines
+	titleRegex := regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
+	matchesStandard := titleRegex.FindStringSubmatch(html)
+	slog.Info("meta: standard title search result", "count", len(matchesStandard), "url", rawURL)
+	if len(matchesStandard) > 0 {
+		slog.Info("meta: standard title matches", "matches", matchesStandard)
+	}
+	if len(matchesStandard) >= 2 {
+		slog.Info("meta: standard title success", "url", rawURL)
+		return cleanText(matchesStandard[1])
 	}
 
 	return ""

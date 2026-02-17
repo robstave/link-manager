@@ -846,8 +846,9 @@ header {
 .link-detail-footer {
   margin-top: auto;
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 0.5rem;
   font-size: 0.75rem;
   color: var(--text-muted);
 }

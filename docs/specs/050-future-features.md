@@ -57,6 +57,18 @@ Electronics/
 - Warn when adding URL that already exists
 - Merge duplicates across projects
 
+### Drag-and-Drop & Custom Ordering
+
+- **Custom Reordering**: Support manual ordering of links within a category using Drag-and-Drop.
+- **Cross-Category Moves**: Drag a link from one category card to another to update its category.
+- **Lexicographical String Ordering**:
+  - Implement ordering using lexicographical strings (similar to Figma or Linear) to allow arbitrary insertions without re-indexing all items.
+  - New service/utility specifically for string ordering logic with comprehensive test cases.
+  - Insert between `A` and `B` → `AN`, etc.
+- **Rebalance Service**:
+  - Admin feature to re-normalize/rebalance ordering strings for a category if they become excessively long.
+  - Triggerable via UI button or API.
+
 ---
 
 ## V2: Browser Extension
