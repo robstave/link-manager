@@ -373,6 +373,13 @@ header {
   font-size: 0.6rem;
 }
 
+.link-favicon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
 .link-info {
   flex: 1;
   min-width: 0;

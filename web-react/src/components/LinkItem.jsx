@@ -46,7 +46,18 @@ export default function LinkItem({ link, onEdit }) {
             onClick={handleClick}
         >
             <div className="link-favicon">
-                {link.title ? link.title[0].toUpperCase() : '?'}
+                {link.icon_url ? (
+                    <img 
+                        src={link.icon_url} 
+                        alt="" 
+                        onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.parentElement.textContent = link.title ? link.title[0].toUpperCase() : '?';
+                        }}
+                    />
+                ) : (
+                    link.title ? link.title[0].toUpperCase() : '?'
+                )}
             </div>
             <div className="link-info">
                 <div className="link-title">
