@@ -1,6 +1,6 @@
 import CategoryCard from './CategoryCard';
 
-export default function CategoryGrid({ categories, currentProjectId, onLinkCreated, onEdit, refreshTimestamp }) {
+export default function CategoryGrid({ categories, currentProjectId, onLinkCreated, onEdit, onOpenCategory, refreshTimestamp }) {
     if (!categories || categories.length === 0) {
         return (
             <div className="empty-state">
@@ -18,6 +18,7 @@ export default function CategoryGrid({ categories, currentProjectId, onLinkCreat
                     projectId={currentProjectId}
                     onLinkCreated={onLinkCreated}
                     onEdit={onEdit}
+                    onOpenCategory={onOpenCategory}
                     refreshTimestamp={refreshTimestamp}
                 />
             ))}

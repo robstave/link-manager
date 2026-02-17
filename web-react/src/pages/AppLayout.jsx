@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import CategoryGrid from '../components/CategoryGrid';
 import SearchResults from '../components/SearchResults';
+import CategoryDetailView from '../components/CategoryDetailView';
 import EditLinkModal from '../components/modals/EditLinkModal';
 
 export default function AppLayout() {
@@ -17,6 +18,7 @@ export default function AppLayout() {
     const [categories, setCategories] = useState([]);
     const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
     const [editingLink, setEditingLink] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState(null);
 
     const loadProjects = useCallback(async () => {
         const data = await api.getProjects();
@@ -50,6 +52,7 @@ export default function AppLayout() {
     useEffect(() => {
         if (currentProjectId) {
             loadCategories(currentProjectId);
+            setSelectedCategory(null);
         }
     }, [currentProjectId, loadCategories]);
 
@@ -107,6 +110,11 @@ export default function AppLayout() {
         setSearchResults(null);
     }
 
+    function handleOpenCategory(category) {
+        setSelectedCategory(category);
+        setSearchResults(null);
+    }
+
     return (
         <div className="app-layout">
             <Sidebar
@@ -140,6 +148,14 @@ export default function AppLayout() {
                             onEdit={setEditingLink}
                             refreshTimestamp={refreshTimestamp}
                         />
+                    ) : selectedCategory ? (
+                        <CategoryDetailView
+                            category={selectedCategory}
+                            projectName={currentProject?.name || 'Project'}
+                            onBack={() => setSelectedCategory(null)}
+                            onEdit={setEditingLink}
+                            refreshTimestamp={refreshTimestamp}
+                        />
                     ) : (
                         <>
                             {currentProject && (
@@ -153,6 +169,7 @@ export default function AppLayout() {
                                 currentProjectId={currentProjectId}
                                 onLinkCreated={handleLinkCreated}
                                 onEdit={setEditingLink}
+                                onOpenCategory={handleOpenCategory}
                                 refreshTimestamp={refreshTimestamp}
                             />
                         </>
