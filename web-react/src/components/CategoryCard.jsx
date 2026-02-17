@@ -23,7 +23,7 @@ function extractDroppedUrl(e) {
     return null;
 }
 
-export default function CategoryCard({ category, projectId, onLinkCreated, onEdit, refreshTimestamp }) {
+export default function CategoryCard({ category, projectId, onLinkCreated, onEdit, onOpenCategory, refreshTimestamp }) {
     const [links, setLinks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddLink, setShowAddLink] = useState(false);
@@ -98,10 +98,14 @@ export default function CategoryCard({ category, projectId, onLinkCreated, onEdi
                 onDrop={handleDrop}
             >
                 <div className="category-header">
-                    <div className="category-title">
+                    <button
+                        className="category-title category-title-link"
+                        type="button"
+                        onClick={() => onOpenCategory?.(category)}
+                    >
                         <span>{category.is_default ? '📦' : '📁'}</span>
                         <span>{category.name}</span>
-                    </div>
+                    </button>
                     <div className="category-actions">
                         <button
                             className="btn category-add-link"
@@ -122,7 +126,7 @@ export default function CategoryCard({ category, projectId, onLinkCreated, onEdi
                     )}
                 </div>
                 {category.link_count > 15 && (
-                    <button className="btn view-all-btn">
+                    <button className="btn view-all-btn" onClick={() => onOpenCategory?.(category)}>
                         View All {category.link_count} Links
                     </button>
                 )}
