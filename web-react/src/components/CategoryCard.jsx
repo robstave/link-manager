@@ -1,12 +1,74 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import LinkItem from './LinkItem';
 import AddLinkModal from './modals/AddLinkModal';
+
+function extractDroppedUrl(e) {
+    // Try text/uri-list first (standard browser drag from address bar)
+    let url = e.dataTransfer.getData('text/uri-list');
+    if (url) {
+        // uri-list can have multiple lines; skip comments (#)
+        const lines = url.split('\n').filter(l => l.trim() && !l.startsWith('#'));
+        if (lines.length > 0) return lines[0].trim();
+    }
+    // Fall back to text/plain
+    url = e.dataTransfer.getData('text/plain');
+    if (url) {
+        url = url.trim();
+        // Basic validation: must look like a URL
+        if (url.startsWith('http://') || url.startsWith('https://') || url.includes('.')) {
+            return url;
+        }
+    }
+    return null;
+}
 
 export default function CategoryCard({ category, projectId, onLinkCreated, onEdit, refreshTimestamp }) {
     const [links, setLinks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddLink, setShowAddLink] = useState(false);
+    const [dragOver, setDragOver] = useState(false);
+    const dragCounter = useRef(0);
+
+    function handleDragEnter(e) {
+        e.preventDefault();
+        dragCounter.current++;
+        setDragOver(true);
+    }
+
+    function handleDragLeave(e) {
+        e.preventDefault();
+        dragCounter.current--;
+        if (dragCounter.current <= 0) {
+            dragCounter.current = 0;
+            setDragOver(false);
+        }
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    }
+
+    async function handleDrop(e) {
+        e.preventDefault();
+        dragCounter.current = 0;
+        setDragOver(false);
+
+        const url = extractDroppedUrl(e);
+        if (!url) return;
+
+        try {
+            await api.createLink({
+                url,
+                project_id: projectId,
+                category_id: category.id,
+            });
+            if (onLinkCreated) onLinkCreated();
+        } catch (err) {
+            console.error('Failed to create link from drop:', err);
+        }
+    }
 
     useEffect(() => {
         async function fetchLinks() {
@@ -28,7 +90,13 @@ export default function CategoryCard({ category, projectId, onLinkCreated, onEdi
 
     return (
         <>
-            <div className="category-card">
+            <div
+                className={`category-card${dragOver ? ' drag-over' : ''}`}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+            >
                 <div className="category-header">
                     <div className="category-title">
                         <span>{category.is_default ? '📦' : '📁'}</span>

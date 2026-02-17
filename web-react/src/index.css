@@ -284,6 +284,13 @@ header {
   z-index: 20;
 }
 
+.category-card.drag-over {
+  border-color: var(--primary);
+  background-color: rgba(99, 102, 241, 0.08);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3), var(--shadow);
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
 .category-header {
   display: flex;
   justify-content: space-between;
