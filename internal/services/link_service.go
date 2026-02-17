@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -10,9 +11,14 @@ import (
 	"github.com/robstave/link-manager/internal/repositories"
 )
 
-type LinkService struct{ repo *repositories.LinkRepository }
+type LinkService struct {
+	repo    *repositories.LinkRepository
+	metaSvc *MetadataService
+}
 
-func NewLinkService(repo *repositories.LinkRepository) *LinkService { return &LinkService{repo: repo} }
+func NewLinkService(repo *repositories.LinkRepository, metaSvc *MetadataService) *LinkService {
+	return &LinkService{repo: repo, metaSvc: metaSvc}
+}
 
 func (s *LinkService) List(ctx context.Context, ownerID string, f repositories.LinkFilters) ([]repositories.LinkWithMeta, int, error) {
 	return s.repo.List(ctx, ownerID, f)
@@ -35,7 +41,30 @@ func (s *LinkService) Create(ctx context.Context, ownerID string, req CreateLink
 		}
 		categoryID = id
 	}
-	return s.repo.Create(ctx, ownerID, projectID, categoryID, normalizeURL(req.URL), req.Title, req.Description, req.UserNotes, req.Stars, req.Tags)
+	normURL := normalizeURL(req.URL)
+	title := req.Title
+	iconURL := req.IconURL
+
+	// Auto-fetch title and icon when title is empty
+	if title == "" && normURL != "" && s.metaSvc != nil {
+		slog.Info("link-create: title empty, auto-fetching metadata", "url", normURL)
+		meta, err := s.metaSvc.FetchPageMeta(normURL)
+		if err != nil {
+			slog.Error("link-create: auto-fetch failed", "url", normURL, "error", err)
+		} else {
+			slog.Info("link-create: auto-fetch succeeded", "url", normURL, "title", meta.Title, "iconURL", meta.IconURL)
+			if meta.Title != "" {
+				title = meta.Title
+			}
+			if meta.IconURL != "" {
+				iconURL = meta.IconURL
+			}
+		}
+	} else if title != "" {
+		slog.Info("link-create: title provided, skipping auto-fetch", "title", title)
+	}
+
+	return s.repo.Create(ctx, ownerID, projectID, categoryID, normURL, title, req.Description, req.UserNotes, iconURL, req.Stars, req.Tags)
 }
 
 func (s *LinkService) Get(ctx context.Context, linkID, ownerID string) (repositories.LinkWithMeta, error) {
@@ -62,7 +91,30 @@ func (s *LinkService) Update(ctx context.Context, ownerID, linkID string, req Cr
 		}
 		categoryID = id
 	}
-	return s.repo.Update(ctx, ownerID, linkID, projectID, categoryID, normalizeURL(req.URL), req.Title, req.Description, req.UserNotes, req.Stars, req.Tags)
+	normURL := normalizeURL(req.URL)
+	title := req.Title
+	iconURL := req.IconURL
+
+	// Auto-fetch title and icon when title is empty
+	if title == "" && normURL != "" && s.metaSvc != nil {
+		slog.Info("link-update: title empty, auto-fetching metadata", "url", normURL, "linkID", linkID)
+		meta, err := s.metaSvc.FetchPageMeta(normURL)
+		if err != nil {
+			slog.Error("link-update: auto-fetch failed", "url", normURL, "linkID", linkID, "error", err)
+		} else {
+			slog.Info("link-update: auto-fetch succeeded", "url", normURL, "linkID", linkID, "title", meta.Title, "iconURL", meta.IconURL)
+			if meta.Title != "" {
+				title = meta.Title
+			}
+			if meta.IconURL != "" {
+				iconURL = meta.IconURL
+			}
+		}
+	} else if title != "" {
+		slog.Info("link-update: title provided, skipping auto-fetch", "title", title, "linkID", linkID)
+	}
+
+	return s.repo.Update(ctx, ownerID, linkID, projectID, categoryID, normURL, title, req.Description, req.UserNotes, iconURL, req.Stars, req.Tags)
 }
 
 func (s *LinkService) UpdateStars(ctx context.Context, linkID, ownerID string, stars int) error {
@@ -84,6 +136,7 @@ func IsNotFound(err error) bool {
 
 type CreateLinkInput struct {
 	URL, Title, Description, UserNotes string
+	IconURL                            string
 	ProjectID, CategoryID              string
 	Tags                               []string
 	Stars                              int

@@ -35,9 +35,10 @@ func main() {
 	authController := controllers.NewAuthController(authSvc)
 	projectController := controllers.NewProjectController(services.NewProjectService(repositories.NewProjectRepository(database.Pool)))
 	categoryController := controllers.NewCategoryController(services.NewCategoryService(repositories.NewCategoryRepository(database.Pool)))
-	linkController := controllers.NewLinkController(services.NewLinkService(repositories.NewLinkRepository(database.Pool)))
+	metaSvc := services.NewMetadataService()
+	linkController := controllers.NewLinkController(services.NewLinkService(repositories.NewLinkRepository(database.Pool), metaSvc))
 	tagController := controllers.NewTagController(services.NewTagService(repositories.NewTagRepository(database.Pool)))
-	metadataController := controllers.NewMetadataController(services.NewMetadataService())
+	metadataController := controllers.NewMetadataController(metaSvc)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/healthz", func(w http.ResponseWriter, r *http.Request) {

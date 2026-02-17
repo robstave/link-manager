@@ -136,15 +136,15 @@ func (r *LinkRepository) DefaultCategoryID(ctx context.Context, projectID string
 	return id, err
 }
 
-func (r *LinkRepository) Create(ctx context.Context, ownerID, projectID, categoryID, url, title, description, userNotes string, stars int, tags []string) (models.Link, error) {
+func (r *LinkRepository) Create(ctx context.Context, ownerID, projectID, categoryID, url, title, description, userNotes, iconURL string, stars int, tags []string) (models.Link, error) {
 	var link models.Link
 	err := r.pool.QueryRow(ctx, `
-		INSERT INTO links (owner_id, project_id, category_id, url, title, description, user_notes, stars)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO links (owner_id, project_id, category_id, url, title, description, user_notes, icon_url, stars)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, owner_id, project_id, category_id, url, title, description, icon_url,
 			user_notes, generated_notes, generated_notes_size, stars, click_count, 
 			last_clicked_at, cart, created_at, updated_at
-	`, ownerID, projectID, categoryID, url, title, description, userNotes, stars).Scan(
+	`, ownerID, projectID, categoryID, url, title, description, userNotes, iconURL, stars).Scan(
 		&link.ID, &link.OwnerID, &link.ProjectID, &link.CategoryID, &link.URL,
 		&link.Title, &link.Description, &link.IconURL, &link.UserNotes,
 		&link.GeneratedNotes, &link.GeneratedNotesSize, &link.Stars,
@@ -211,7 +211,7 @@ func (r *LinkRepository) Click(ctx context.Context, linkID, ownerID string) (str
 	return url, err
 }
 
-func (r *LinkRepository) Update(ctx context.Context, ownerID, linkID string, projectID, categoryID, url, title, description, userNotes string, stars int, tags []string) error {
+func (r *LinkRepository) Update(ctx context.Context, ownerID, linkID string, projectID, categoryID, url, title, description, userNotes, iconURL string, stars int, tags []string) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -220,9 +220,9 @@ func (r *LinkRepository) Update(ctx context.Context, ownerID, linkID string, pro
 
 	_, err = tx.Exec(ctx, `
 		UPDATE links 
-		SET project_id = $1, category_id = $2, url = $3, title = $4, description = $5, user_notes = $6, stars = $7, updated_at = NOW()
-		WHERE id = $8 AND owner_id = $9
-	`, projectID, categoryID, url, title, description, userNotes, stars, linkID, ownerID)
+		SET project_id = $1, category_id = $2, url = $3, title = $4, description = $5, user_notes = $6, stars = $7, icon_url = $8, updated_at = NOW()
+		WHERE id = $9 AND owner_id = $10
+	`, projectID, categoryID, url, title, description, userNotes, stars, iconURL, linkID, ownerID)
 	if err != nil {
 		return err
 	}
