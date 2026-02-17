@@ -9,6 +9,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentProjectId = null;
     let categories = [];
 
+    async function createCategoryForProject(projectId, name) {
+        if (typeof api.createCategory === 'function') {
+            return api.createCategory(projectId, name);
+        }
+
+        console.warn('api.createCategory() is missing; using request() fallback');
+        return api.request(`/projects/${projectId}/categories`, {
+            method: 'POST',
+            body: JSON.stringify({ name }),
+        });
+    }
+
     // Initial Auth Check
     if (api.isAuthenticated()) {
         showApp();
@@ -259,7 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            await api.createCategory(currentProjectId, name);
+            await createCategoryForProject(currentProjectId, name);
             addCategoryModal.classList.add('hidden');
             addCategoryForm.reset();
             await loadProjectContent(currentProjectId);
