@@ -25,6 +25,15 @@
 
 ## V2: Enhanced Organization
 
+### Category Card Pagination
+
+- Limit links displayed per category card to ~40 links
+- Show total link count on category card header
+- Add "View All {count} Links" button at bottom of card to expand/navigate to full view
+- Consider implementing lazy loading or modal view for expanded category
+- Current: Each CategoryCard fetches all links (limited to 15 in frontend but not enforced)
+- Goal: Better performance for categories with hundreds of links while maintaining quick overview
+
 ### Nested Categories
 
 ```
