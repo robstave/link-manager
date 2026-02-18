@@ -52,9 +52,12 @@ func (s *LinkService) Create(ctx context.Context, ownerID string, req CreateLink
 		if err != nil {
 			slog.Error("link-create: auto-fetch failed", "url", normURL, "error", err)
 		} else {
-			slog.Info("link-create: auto-fetch succeeded", "url", normURL, "title", meta.Title, "iconURL", meta.IconURL)
+			slog.Info("link-create: auto-fetch succeeded", "url", normURL, "title", meta.Title, "description", meta.Description, "iconURL", meta.IconURL)
 			if meta.Title != "" {
 				title = meta.Title
+			}
+			if meta.Description != "" && req.Description == "" {
+				req.Description = meta.Description
 			}
 			if meta.IconURL != "" {
 				iconURL = meta.IconURL
@@ -102,9 +105,12 @@ func (s *LinkService) Update(ctx context.Context, ownerID, linkID string, req Cr
 		if err != nil {
 			slog.Error("link-update: auto-fetch failed", "url", normURL, "linkID", linkID, "error", err)
 		} else {
-			slog.Info("link-update: auto-fetch succeeded", "url", normURL, "linkID", linkID, "title", meta.Title, "iconURL", meta.IconURL)
+			slog.Info("link-update: auto-fetch succeeded", "url", normURL, "linkID", linkID, "title", meta.Title, "description", meta.Description, "iconURL", meta.IconURL)
 			if meta.Title != "" {
 				title = meta.Title
+			}
+			if meta.Description != "" && req.Description == "" {
+				req.Description = meta.Description
 			}
 			if meta.IconURL != "" {
 				iconURL = meta.IconURL

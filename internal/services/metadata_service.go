@@ -2,13 +2,13 @@ package services
 
 import (
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/gocolly/colly/v2"
 )
 
 type MetadataService struct{}
@@ -19,54 +19,168 @@ func NewMetadataService() *MetadataService {
 
 // PageMeta holds scraped metadata from a web page
 type PageMeta struct {
-	Title   string
-	IconURL string
+	Title       string
+	Description string
+	IconURL     string
 }
 
-// FetchPageMeta fetches a URL and extracts the title and icon
+// FetchPageMeta fetches a URL and extracts the title, description and icon using Colly.
 func (s *MetadataService) FetchPageMeta(rawURL string) (PageMeta, error) {
 	slog.Info("meta: fetching page metadata", "url", rawURL)
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
+	isYouTube := strings.Contains(strings.ToLower(rawURL), "youtube.com") ||
+		strings.Contains(strings.ToLower(rawURL), "youtu.be")
+
+	var meta PageMeta
+	baseURL := rawURL
+
+	c := colly.NewCollector(
+		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+		colly.MaxDepth(1),
+	)
+	c.SetRequestTimeout(10 * time.Second)
+
+	// ── Title extraction ─────────────────────────────────────────────────────
+
+	// For YouTube, prefer twitter:title (clean, no channel prefix or " - YouTube" suffix)
+	if isYouTube {
+		c.OnHTML(`meta[name="twitter:title"]`, func(e *colly.HTMLElement) {
+			if meta.Title == "" {
+				val := strings.TrimSpace(e.Attr("content"))
+				if val != "" {
+					slog.Info("meta: youtube twitter:title hit", "value", val)
+					meta.Title = cleanText(val)
+				}
+			}
+		})
+		c.OnHTML(`title`, func(e *colly.HTMLElement) {
+			if meta.Title == "" {
+				val := strings.TrimSpace(e.Text)
+				if val != "" {
+					slog.Info("meta: youtube <title> hit", "value", val)
+					meta.Title = cleanText(val)
+				}
+			}
+		})
 	}
 
-	req, err := http.NewRequest("GET", rawURL, nil)
-	if err != nil {
-		slog.Error("meta: failed to create request", "url", rawURL, "error", err)
-		return PageMeta{}, fmt.Errorf("failed to create request: %w", err)
-	}
+	// General: og:title first, then twitter:title, then <title>
+	c.OnHTML(`meta[property="og:title"]`, func(e *colly.HTMLElement) {
+		if meta.Title == "" {
+			val := strings.TrimSpace(e.Attr("content"))
+			if val != "" {
+				slog.Info("meta: og:title hit", "value", val)
+				meta.Title = cleanText(val)
+			}
+		}
+	})
+	c.OnHTML(`meta[name="twitter:title"]`, func(e *colly.HTMLElement) {
+		if meta.Title == "" {
+			val := strings.TrimSpace(e.Attr("content"))
+			if val != "" {
+				slog.Info("meta: twitter:title hit", "value", val)
+				meta.Title = cleanText(val)
+			}
+		}
+	})
+	c.OnHTML(`title`, func(e *colly.HTMLElement) {
+		if meta.Title == "" {
+			val := strings.TrimSpace(e.Text)
+			if val != "" {
+				slog.Info("meta: <title> hit", "value", val)
+				meta.Title = cleanText(val)
+			}
+		}
+	})
 
-	// Many sites block or degrade responses without a browser-like user agent
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; bookmarkbot/1.0)")
-	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	// ── Description extraction ────────────────────────────────────────────────
 
-	resp, err := client.Do(req)
-	if err != nil {
-		slog.Error("meta: HTTP request failed", "url", rawURL, "error", err)
+	c.OnHTML(`meta[property="og:description"]`, func(e *colly.HTMLElement) {
+		if meta.Description == "" {
+			val := strings.TrimSpace(e.Attr("content"))
+			if val != "" {
+				slog.Info("meta: og:description hit", "value", val)
+				meta.Description = cleanText(val)
+			}
+		}
+	})
+	c.OnHTML(`meta[name="description"]`, func(e *colly.HTMLElement) {
+		if meta.Description == "" {
+			val := strings.TrimSpace(e.Attr("content"))
+			if val != "" {
+				slog.Info("meta: description hit", "value", val)
+				meta.Description = cleanText(val)
+			}
+		}
+	})
+	c.OnHTML(`meta[name="twitter:description"]`, func(e *colly.HTMLElement) {
+		if meta.Description == "" {
+			val := strings.TrimSpace(e.Attr("content"))
+			if val != "" {
+				slog.Info("meta: twitter:description hit", "value", val)
+				meta.Description = cleanText(val)
+			}
+		}
+	})
+
+	// ── Icon extraction ───────────────────────────────────────────────────────
+
+	c.OnHTML(`link[rel~="icon"]`, func(e *colly.HTMLElement) {
+		if meta.IconURL == "" {
+			href := strings.TrimSpace(e.Attr("href"))
+			if href != "" {
+				slog.Info("meta: icon link hit", "href", href)
+				meta.IconURL = resolveURL(href, baseURL)
+			}
+		}
+	})
+	c.OnHTML(`link[rel="apple-touch-icon"]`, func(e *colly.HTMLElement) {
+		if meta.IconURL == "" {
+			href := strings.TrimSpace(e.Attr("href"))
+			if href != "" {
+				slog.Info("meta: apple-touch-icon hit", "href", href)
+				meta.IconURL = resolveURL(href, baseURL)
+			}
+		}
+	})
+	c.OnHTML(`meta[property="og:image"]`, func(e *colly.HTMLElement) {
+		if meta.IconURL == "" {
+			val := strings.TrimSpace(e.Attr("content"))
+			if val != "" {
+				slog.Info("meta: og:image hit", "value", val)
+				meta.IconURL = resolveURL(val, baseURL)
+			}
+		}
+	})
+
+	c.OnError(func(r *colly.Response, err error) {
+		slog.Error("meta: colly request error", "url", rawURL, "status", r.StatusCode, "error", err)
+	})
+
+	c.OnResponse(func(r *colly.Response) {
+		slog.Info("meta: response received", "url", rawURL, "status", r.StatusCode, "bytes", len(r.Body))
+	})
+
+	if err := c.Visit(rawURL); err != nil {
+		slog.Error("meta: colly visit failed", "url", rawURL, "error", err)
 		return PageMeta{}, fmt.Errorf("failed to fetch URL: %w", err)
 	}
-	defer resp.Body.Close()
 
-	slog.Info("meta: received response", "url", rawURL, "status", resp.StatusCode)
-
-	// 100KB — enough to capture <head> on even verbose sites
-	limitedReader := io.LimitReader(resp.Body, 250*1024)
-	body, err := io.ReadAll(limitedReader)
-	if err != nil {
-		slog.Error("meta: failed to read response body", "url", rawURL, "error", err)
-		return PageMeta{}, fmt.Errorf("failed to read response: %w", err)
+	// Final fallback for icon: /favicon.ico at domain root
+	if meta.IconURL == "" {
+		parsed, err := url.Parse(rawURL)
+		if err == nil {
+			meta.IconURL = parsed.Scheme + "://" + parsed.Host + "/favicon.ico"
+		}
 	}
 
-	slog.Info("meta: read body", "url", rawURL, "bytes", len(body))
-
-	html := string(body)
-	meta := PageMeta{
-		Title:   extractTitle(html, rawURL),
-		IconURL: extractIcon(html, rawURL),
+	// Known-site icon overrides (sites with non-standard or broken favicon discovery)
+	if strings.Contains(strings.ToLower(rawURL), "leetcode.com") {
+		slog.Info("meta: leetcode icon override", "url", rawURL)
+		meta.IconURL = "https://assets.leetcode.com/static_assets/public/icons/favicon.ico"
 	}
 
-	slog.Info("meta: extracted metadata", "url", rawURL, "title", meta.Title, "iconURL", meta.IconURL)
+	slog.Info("meta: extracted metadata", "url", rawURL, "title", meta.Title, "description", meta.Description, "iconURL", meta.IconURL)
 	return meta, nil
 }
 
@@ -80,141 +194,6 @@ func (s *MetadataService) FetchTitle(rawURL string) (string, error) {
 		return "", fmt.Errorf("no title found")
 	}
 	return meta.Title, nil
-}
-
-// extractTitle tries og:title first (usually cleaner), then falls back to <title>
-// For YouTube, it prioritises the <title> tag.
-func extractTitle(html string, rawURL string) string {
-
-	slog.Info("meta: extracting title----", "url", rawURL)
-
-	// Log a small snippet of the body to help debug
-	snippetLen := 500
-	if len(html) < snippetLen {
-		snippetLen = len(html)
-	}
-	slog.Info("meta: body snippet", "snippet", html[:snippetLen])
-
-	// YouTube-specific priority: use standard <title> tag first
-	isYouTube := strings.Contains(strings.ToLower(rawURL), "youtube.com") || strings.Contains(strings.ToLower(rawURL), "youtu.be")
-	if isYouTube {
-		slog.Info("meta: isYoutube", "url", rawURL)
-		// Use (?is) so that . matches newlines
-		titleRegex := regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
-
-		matches := titleRegex.FindStringSubmatch(html)
-		slog.Info("meta: youtube search result", "count", len(matches), "url", rawURL)
-		if len(matches) > 0 {
-			slog.Info("meta: youtube matches", "matches", matches)
-		}
-		if len(matches) >= 2 {
-			slog.Info("meta: youtube success", "url", rawURL)
-			return cleanText(matches[1])
-		}
-
-		// Also check twitter:title for YouTube specifically
-		twitterRegex := regexp.MustCompile(`(?i)<meta[^>]+name\s*=\s*["']twitter:title["'][^>]+content\s*=\s*["']([^"']+)["']`)
-		if twitterMatches := twitterRegex.FindStringSubmatch(html); len(twitterMatches) >= 2 {
-			slog.Info("meta: youtube twitter:title success", "url", rawURL)
-			return cleanText(twitterMatches[1])
-		}
-
-		slog.Info("meta: isYoutube failed xxx", "url", rawURL)
-	}
-
-	// og:title — content before property
-	ogRegex := regexp.MustCompile(`(?i)<meta[^>]+property\s*=\s*["']og:title["'][^>]+content\s*=\s*["']([^"']+)["']`)
-	matches := ogRegex.FindStringSubmatch(html)
-	slog.Info("meta: ogRegex search result", "count", len(matches), "url", rawURL)
-	if len(matches) > 0 {
-		slog.Info("meta: ogRegex matches", "matches", matches)
-	}
-	if len(matches) >= 2 {
-		slog.Info("meta: og:title success", "url", rawURL)
-		return cleanText(matches[1])
-	}
-
-	// og:title — content after property (attribute order varies)
-	ogRegex2 := regexp.MustCompile(`(?i)<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+property\s*=\s*["']og:title["']`)
-	matches2 := ogRegex2.FindStringSubmatch(html)
-	slog.Info("meta: ogRegex2 search result", "count", len(matches2), "url", rawURL)
-	if len(matches2) > 0 {
-		slog.Info("meta: ogRegex2 matches", "matches", matches2)
-	}
-	if len(matches2) >= 2 {
-		slog.Info("meta: og:title (variant) success", "url", rawURL)
-		return cleanText(matches2[1])
-	}
-
-	// twitter:title — similar to og:title, often present on news/social sites
-	twitterRegex := regexp.MustCompile(`(?i)<meta[^>]+name\s*=\s*["']twitter:title["'][^>]+content\s*=\s*["']([^"']+)["']`)
-	matchesTwitter := twitterRegex.FindStringSubmatch(html)
-	slog.Info("meta: twitterRegex search result", "count", len(matchesTwitter), "url", rawURL)
-	if len(matchesTwitter) > 0 {
-		slog.Info("meta: twitterRegex matches", "matches", matchesTwitter)
-	}
-	if len(matchesTwitter) >= 2 {
-		slog.Info("meta: twitter:title success", "url", rawURL)
-		return cleanText(matchesTwitter[1])
-	}
-
-	// twitter:title — content after name (variant)
-	twitterRegex2 := regexp.MustCompile(`(?i)<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+name\s*=\s*["']twitter:title["']`)
-	matchesTwitter2 := twitterRegex2.FindStringSubmatch(html)
-	slog.Info("meta: twitterRegex2 search result", "count", len(matchesTwitter2), "url", rawURL)
-	if len(matchesTwitter2) > 0 {
-		slog.Info("meta: twitterRegex2 matches", "matches", matchesTwitter2)
-	}
-	if len(matchesTwitter2) >= 2 {
-		slog.Info("meta: twitter:title (variant) success", "url", rawURL)
-		return cleanText(matchesTwitter2[1])
-	}
-
-	// Standard <title> tag as final fallback
-	// Use (?is) so that . matches newlines
-	titleRegex := regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
-	matchesStandard := titleRegex.FindStringSubmatch(html)
-	slog.Info("meta: standard title search result", "count", len(matchesStandard), "url", rawURL)
-	if len(matchesStandard) > 0 {
-		slog.Info("meta: standard title matches", "matches", matchesStandard)
-	}
-	if len(matchesStandard) >= 2 {
-		slog.Info("meta: standard title success", "url", rawURL)
-		return cleanText(matchesStandard[1])
-	}
-
-	return ""
-}
-
-// extractIcon tries several strategies in order of preference
-func extractIcon(html, rawURL string) string {
-	// Ordered patterns — first match wins
-	patterns := []string{
-		// rel="icon" with quotes, href after rel
-		`(?i)<link[^>]+rel\s*=\s*["'][^"']*icon[^"']*["'][^>]+href\s*=\s*["']([^"']+)["']`,
-		// rel="icon" with quotes, href before rel
-		`(?i)<link[^>]+href\s*=\s*["']([^"']+)["'][^>]+rel\s*=\s*["'][^"']*icon[^"']*["']`,
-		// apple-touch-icon — high res, good fallback
-		`(?i)<link[^>]+rel\s*=\s*["']apple-touch-icon["'][^>]+href\s*=\s*["']([^"']+)["']`,
-		// og:image — last resort before /favicon.ico, gives something visual
-		`(?i)<meta[^>]+property\s*=\s*["']og:image["'][^>]+content\s*=\s*["']([^"']+)["']`,
-	}
-
-	for _, pattern := range patterns {
-		re := regexp.MustCompile(pattern)
-		if matches := re.FindStringSubmatch(html); len(matches) >= 2 {
-			href := strings.TrimSpace(matches[1])
-			return resolveURL(href, rawURL)
-		}
-	}
-
-	// Final fallback: /favicon.ico at the domain root
-	parsed, err := url.Parse(rawURL)
-	if err == nil {
-		return parsed.Scheme + "://" + parsed.Host + "/favicon.ico"
-	}
-
-	return ""
 }
 
 // resolveURL turns relative hrefs into absolute URLs
